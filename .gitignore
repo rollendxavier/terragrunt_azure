@@ -1,0 +1,4 @@
+module/virtual-network/.terraform/
+module/resource-group/.terraform/
+module/resource-group/.terraform.lock.hcl
+module/virtual-network/.terraform.lock.hcl
