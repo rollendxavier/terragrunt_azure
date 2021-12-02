@@ -1,0 +1,87 @@
+trigger:
+  batch: true
+  branches:
+    include:
+      - master
+
+variables:
+- group: rollend-cicd-secrets
+
+pool: WAPHA-rollend-cicd-pool
+
+stages:
+  - stage: Build
+    jobs:
+    - job: Build
+
+      steps:
+      - checkout: self
+        fetchDepth: 1
+
+      - script: |
+          az login --service-principal -u $ARM_CLIENT_ID -p $ARM_CLIENT_SECRET --tenant $ARM_TENANT_ID
+        displayName: 'Setup az cli'
+        env:
+          ARM_CLIENT_ID: $(tf-sp-client-id)
+          ARM_CLIENT_SECRET: $(tf-sp-secret)
+          ARM_TENANT_ID: $(rollend-tenant-id)
+
+      - powershell: |
+          $password = ConvertTo-SecureString $Env:ARM_CLIENT_SECRET -AsPlainText -Force
+          $psCred = New-Object System.Management.Automation.PSCredential -ArgumentList ($Env:ARM_CLIENT_ID, $password)
+          Connect-AzAccount -Credential $psCred -Tenant $Env:ARM_TENANT_ID -ServicePrincipal 
+        displayName: 'Setup Azure Powershell'
+        env:
+          ARM_CLIENT_ID: $(tf-sp-client-id)
+          ARM_CLIENT_SECRET: $(tf-sp-secret)
+          ARM_TENANT_ID: $(rollend-tenant-id)
+
+      - script: terragrunt plan
+        workingDirectory: $(Build.SourcesDirectory)/module/virtual-network
+        env:
+          ARM_CLIENT_ID: $(tf-sp-client-id)
+          ARM_CLIENT_SECRET: $(tf-sp-secret)
+          ARM_SUBSCRIPTION_ID: $(shared-subscription-id)
+          ARM_TENANT_ID: $(rollend-tenant-id)
+          TF_VAR_azure_devops_pat: $(cicd-agent-pat)
+          TF_VAR_cicd_admin_password: $(cicd-agent-vm-password)
+        displayName: 'terragrunt plan cicd_resources prod'
+
+  - stage: Deploy
+    jobs:
+    - deployment: Deploy
+      environment: "Production"
+      strategy:
+        runOnce:
+          deploy:
+            steps:
+              - checkout: self
+
+              - script: |
+                  az login --service-principal -u $ARM_CLIENT_ID -p $ARM_CLIENT_SECRET --tenant $ARM_TENANT_ID
+                displayName: 'Setup az cli'
+                env:
+                  ARM_CLIENT_ID: $(tf-sp-client-id)
+                  ARM_CLIENT_SECRET: $(tf-sp-secret)
+                  ARM_TENANT_ID: $(rollend-tenant-id)
+
+              - powershell: |
+                  $password = ConvertTo-SecureString $Env:ARM_CLIENT_SECRET -AsPlainText -Force
+                  $psCred = New-Object System.Management.Automation.PSCredential -ArgumentList ($Env:ARM_CLIENT_ID, $password)
+                  Connect-AzAccount -Credential $psCred -Tenant $Env:ARM_TENANT_ID -ServicePrincipal 
+                displayName: 'Setup Azure Powershell'
+                env:
+                  ARM_CLIENT_ID: $(tf-sp-client-id)
+                  ARM_CLIENT_SECRET: $(tf-sp-secret)
+                  ARM_TENANT_ID: $(rollend-tenant-id)
+
+              - script: terragrunt apply -auto-approve
+                workingDirectory: $(Build.SourcesDirectory)/module/virtual-network
+                env:
+                  ARM_CLIENT_ID: $(tf-sp-client-id)
+                  ARM_CLIENT_SECRET: $(tf-sp-secret)
+                  ARM_SUBSCRIPTION_ID: $(shared-subscription-id)
+                  ARM_TENANT_ID: $(rollend-tenant-id)
+                  TF_VAR_azure_devops_pat: $(cicd-agent-pat)
+                  TF_VAR_cicd_admin_password: $(cicd-agent-vm-password)
+                displayName: 'terragrunt apply cicd_resources prod'
