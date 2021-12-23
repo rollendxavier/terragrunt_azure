@@ -1,4 +1,5 @@
 # Create Azure resources with Terragunt
+[![GitHub license](https://img.shields.io/github/license/Naereen/StrapDown.js.svg)](https://github.com/Naereen/StrapDown.js/blob/master/LICENSE)
 ## Requirement
 Create resources on Azure with Terragrunt
 ## Terragrunt
