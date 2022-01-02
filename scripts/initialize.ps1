@@ -9,8 +9,8 @@ param(
 $random = Get-RandomCharacters -length 10 -characters 'abc1234567890'
 
 $tf = New-Object PSObject -Property @{
-    resourcegroup = "terraformstatesa"
-    storage = 'tfstorage'+$random
+    resourcegroup = "rollend-test-rg"
+    storage = 'rollendxstatetf'+$random
     container = "tfstate"
     location = "australiasoutheast"
 }
